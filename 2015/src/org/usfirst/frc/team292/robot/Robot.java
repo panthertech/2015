@@ -1,4 +1,5 @@
 
+//Comments are fun!
 package org.usfirst.frc.team292.robot;
 
 import edu.wpi.first.wpilibj.CANJaguar;
@@ -34,6 +35,8 @@ public class Robot extends IterativeRobot {
 	Encoder driveEncoder;
 	Counter counter;
 	
+	Dashboard dashboard;
+	
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
@@ -63,6 +66,12 @@ public class Robot extends IterativeRobot {
     	driveEncoder.setDistancePerPulse(-0.017444444);
     	
     	counter = new Counter(8);
+    	
+    	dashboard = new Dashboard();
+    	dashboard.setGyro(gyro);
+    	dashboard.setLiftMotor(liftMotor);
+    	dashboard.setLiftEncoder(liftEncoder);
+    	dashboard.start();
     	
     	System.out.println("Robot Initialization Complete: " + Timer.getFPGATimestamp());
     }
@@ -133,7 +142,7 @@ public class Robot extends IterativeRobot {
     		twistSpeed = 0.0;
     	}
 		twistSpeed *= 0.5;
-    	
+    	//comment = 0.25;
     	double angle = 0;
     	if(controller.getRawButton(7)) gyro.reset();
     	if(controller.getTrigger()) {
@@ -149,12 +158,25 @@ public class Robot extends IterativeRobot {
     		//cam.Flashy(false);
     	}
     	
+    	//Now I will write you a lovely story.
+    	//One time there was a girl named Taylor who was bored.
+    	//She wasn't doing anything, so she typed in the code to pretend like she was doing stuff,
+    	//So she wouldn't have to mess with the buttons.
+    	//And it worked.
+    	//And then one day Matt saw her lovely stories.
+    	//And he was like, "Taylor, what the heck did you do to the code?"
+    	//And she laughed merrily.
+    	//The end!
+    	//applauds
+    	//starts crying because it was so beautiful
+    	
     	liftMotor.set(operator.getY());
     	System.out.println("Encoder counts: " + liftEncoder.get());
     	System.out.println("JaguarForwardLimit:" + liftMotor.getForwardLimitOK()); 
     	System.out.println("JaguarBackwardLimit:" + liftMotor.getReverseLimitOK());
-    	if (liftMotor.getForwardLimitOK()) { 
+    	if (!liftMotor.getForwardLimitOK()) { 
     		liftEncoder.reset();
+    		//Matt, it is being mean and not working!!!!!
     	}
     }
     
@@ -173,3 +195,4 @@ public class Robot extends IterativeRobot {
     }
     
 }
+//All of these random comments were brought to you by ~ Taylor!
