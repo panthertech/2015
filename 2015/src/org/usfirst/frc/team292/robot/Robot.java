@@ -23,11 +23,8 @@ import edu.wpi.first.wpilibj.Timer;
 public class Robot extends IterativeRobot {
 	Joystick controller;
 	Joystick operator;
-	Talon lf;
-	Talon rf;
-	Talon lr;
-	Talon rr;
-	CANJaguar liftMotor;
+	Talon lf,rf,lr,rr;
+	CANJaguar liftMotor,gripMotor;
 	RobotDrive drive;
 	Camera cam;
 	Gyro gyro;
@@ -36,6 +33,7 @@ public class Robot extends IterativeRobot {
 	Counter counter;
 	
 	Dashboard dashboard;
+	boolean change = false;
 	
     /**
      * This function is run when the robot is first started up and should be
@@ -49,6 +47,8 @@ public class Robot extends IterativeRobot {
     	lr = new Talon (1);
     	rr = new Talon (3);
     	liftMotor = new CANJaguar(2);
+    	gripMotor = new CANJaguar(3);
+
     	drive = new RobotDrive (lf, lr, rf, rr);
     	drive.setInvertedMotor(MotorType.kFrontLeft, false);
     	drive.setInvertedMotor(MotorType.kFrontRight, true);
@@ -126,7 +126,11 @@ public class Robot extends IterativeRobot {
     /**
      * This function is called periodically during operator control
      */
+	boolean oldFwdLim = false;
+	boolean oldRevLim = false;
+	int oldLiftEncoder = 0; 
     public void teleopPeriodic() {
+    	
     	double xSpeed = controller.getX();
     	if(Math.abs(xSpeed) < 0.05) xSpeed = 0.0;
     	
@@ -169,11 +173,33 @@ public class Robot extends IterativeRobot {
     	//The end!
     	//applauds
     	//starts crying because it was so beautiful
+
+    	double opY = operator.getY();
+    	if(Math.abs(opY)>.5)
+    		liftMotor.set(opY);
+    	else
+    		liftMotor.set(0);
+    	double opX = operator.getX();
+    	if(Math.abs(opX)>.5)
+    		gripMotor.set(-opX);
+    	else
+    		gripMotor.set(0);
+
+    	if(oldLiftEncoder != liftEncoder.get()) {
+    		System.out.println("Encoder counts: " + liftEncoder.get());
+    		oldLiftEncoder = liftEncoder.get();
+    	}
+    	if(oldFwdLim != liftMotor.getForwardLimitOK()) {
+    		System.out.println("JaguarForwardLimit:" + liftMotor.getForwardLimitOK()); 
+    		oldFwdLim = liftMotor.getForwardLimitOK();
+    	}
+    	if(oldRevLim != liftMotor.getReverseLimitOK()) {
+    		System.out.println("JaguarBackwardLimit:" + liftMotor.getReverseLimitOK());
+    		oldRevLim = liftMotor.getReverseLimitOK();
+    	}
     	
-    	liftMotor.set(operator.getY());
-    	System.out.println("Encoder counts: " + liftEncoder.get());
-    	System.out.println("JaguarForwardLimit:" + liftMotor.getForwardLimitOK()); 
-    	System.out.println("JaguarBackwardLimit:" + liftMotor.getReverseLimitOK());
+    	System.out.println("Counts: " + counter.get());
+
     	if (!liftMotor.getForwardLimitOK()) { 
     		liftEncoder.reset();
     		//Matt, it is being mean and not working!!!!!
