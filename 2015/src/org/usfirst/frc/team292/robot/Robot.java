@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj.Timer;
 public class Robot extends IterativeRobot {
 	Joystick controller;
 	Joystick operator;
-	Talon lf,rf,lr,rr;
+	Talon lf,rf,lr,rr,arm;
 	CANJaguar liftMotor,gripMotor;
 	RobotDrive drive;
 	Camera cam;
@@ -46,6 +46,7 @@ public class Robot extends IterativeRobot {
     	rf = new Talon (2);
     	lr = new Talon (1);
     	rr = new Talon (3);
+    	arm = new Talon (6);
     	liftMotor = new CANJaguar(2);
     	gripMotor = new CANJaguar(3);
 
@@ -176,15 +177,22 @@ public class Robot extends IterativeRobot {
 
     	double opY = operator.getY();
     	if(Math.abs(opY)>.5)
-    		liftMotor.set(opY);
+    		liftMotor.set(-opY);
     	else
     		liftMotor.set(0);
     	double opX = operator.getX();
     	if(Math.abs(opX)>.5)
-    		gripMotor.set(-opX);
+    		gripMotor.set(opX);
     	else
     		gripMotor.set(0);
 
+    	if(operator.getRawButton(3))
+    		arm.set(.5);
+    	else if(operator.getRawButton(2))
+    		arm.set(-.5);
+    	else
+    		arm.set(0);
+    		
     	if(oldLiftEncoder != liftEncoder.get()) {
     		System.out.println("Encoder counts: " + liftEncoder.get());
     		oldLiftEncoder = liftEncoder.get();
