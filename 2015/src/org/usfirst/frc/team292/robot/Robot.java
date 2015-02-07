@@ -31,6 +31,7 @@ public class Robot extends IterativeRobot {
 	Encoder liftEncoder;
 	Encoder driveEncoder;
 	Counter counter;
+	int dummy=1;
 	
 	Dashboard dashboard;
 	boolean change = false;
@@ -98,9 +99,13 @@ public class Robot extends IterativeRobot {
     /**
      * This function is called before entering autonomous
      */
+    double starttime;
+    int autostate;
     public void autonomousInit() {
-    	System.out.println("Entering Autonomous: " + Timer.getFPGATimestamp());
+    	System.out.println("Entering Autonomous: " +(starttime = Timer.getFPGATimestamp()));
     	driveEncoder.reset();
+		gyro.reset();
+		autostate=0;
     }
 
     /**
@@ -109,19 +114,44 @@ public class Robot extends IterativeRobot {
     public void autonomousPeriodic() {
     	System.out.println("Distance: " + driveEncoder.getDistance());
     	System.out.println("Angle:    " + gyro.getAngle());
-    	if(driveEncoder.getDistance() < 6.0)
-    	{
-    		drive.mecanumDrive_Cartesian(0, -0.2, -gyro.getAngle()/12, gyro.getAngle());
-    	} else {
-    		drive.stopMotor();
+    //	if(driveEncoder.getDistance() < 6.0)
+    //	{
+    //		drive.mecanumDrive_Cartesian(0, -0.2, -gyro.getAngle()/12, gyro.getAngle());
+    //	} else {
+    //		drive.stopMotor();
+    //	}
+    	switch (dummy) {
+    	case 1:
+    		switch (autostate) {
+    		case 0:    		
+    			System.out.println("Time is: " + (Timer.getFPGATimestamp()-starttime));
+	    		if (Timer.getFPGATimestamp()-starttime >= 5)
+	    			autostate++;
+    		break;
+    		
+    		case 1:    		
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+    				autostate++;
+    				
+    			drive.mecanumDrive_Cartesian(0, -.292,0, gyro.getAngle());
+    		break;
+    		
+    		case 2:
+    		default:
+     			drive.stopMotor();
+   			
+    		}
     	}
     }
 
     /**
      * This function is called before entering operator control
      */
-    public void teleopInit() {
+	int gripPosition; // initialize to unknown
+	boolean gripDirection; // true for close direction
+	public void teleopInit() {
     	System.out.println("Entering Operator Control: " + Timer.getFPGATimestamp());
+    	int gripPosition=-1; // initialize to unknown
     }
 
     /**
@@ -130,7 +160,7 @@ public class Robot extends IterativeRobot {
 	boolean oldFwdLim = false;
 	boolean oldRevLim = false;
 	int oldLiftEncoder = 0; 
-    public void teleopPeriodic() {
+	public void teleopPeriodic() {
     	
     	double xSpeed = controller.getX();
     	if(Math.abs(xSpeed) < 0.05) xSpeed = 0.0;
@@ -181,15 +211,30 @@ public class Robot extends IterativeRobot {
     	else
     		liftMotor.set(0);
     	double opX = operator.getX();
-    	if(Math.abs(opX)>.5)
-    		gripMotor.set(opX);
+    	if(Math.abs(opX)>.5) {
+    		gripPosition=gripPosition-(int)Math.signum(opX)*counter.get();
+    		counter.reset();
+    		if(opX>0) 	// open
+    			if(gripMotor.getForwardLimitOK())
+    				gripMotor.set(opX);
+    			else {
+    				gripMotor.set(.2); // hold the arm open with a small force
+    				counter.reset();
+    				gripPosition=0;
+    			}	
+    		else		// close
+    			if(gripPosition<80)
+    				gripMotor.set(opX);
+    			else
+    				gripMotor.set(0);
+    	}
     	else
     		gripMotor.set(0);
 
     	if(operator.getRawButton(3))
     		arm.set(.5);
     	else if(operator.getRawButton(2))
-    		arm.set(-.5);
+    		arm.set(-.7);
     	else
     		arm.set(0);
     		
@@ -206,12 +251,15 @@ public class Robot extends IterativeRobot {
     		oldRevLim = liftMotor.getReverseLimitOK();
     	}
     	
-    	System.out.println("Counts: " + counter.get());
+    	System.out.println("gripPosition = " + gripPosition +" counts: " + counter.get());
 
     	if (!liftMotor.getForwardLimitOK()) { 
     		liftEncoder.reset();
     		//Matt, it is being mean and not working!!!!!
     	}
+    }
+    {
+    	
     }
     
     /**
