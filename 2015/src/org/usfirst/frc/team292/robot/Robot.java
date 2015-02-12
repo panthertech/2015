@@ -3,6 +3,7 @@
 package org.usfirst.frc.team292.robot;
 
 import edu.wpi.first.wpilibj.CANJaguar;
+
 import edu.wpi.first.wpilibj.Counter;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Gyro;
@@ -12,6 +13,7 @@ import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Servo;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -31,7 +33,8 @@ public class Robot extends IterativeRobot {
 	Encoder liftEncoder;
 	Encoder driveEncoder;
 	Counter counter;
-	int dummy=1;
+	Servo armHolder;
+	int autonomusMode=2;
 	
 	Dashboard dashboard;
 	boolean change = false;
@@ -50,6 +53,7 @@ public class Robot extends IterativeRobot {
     	arm = new Talon (6);
     	liftMotor = new CANJaguar(2);
     	gripMotor = new CANJaguar(3);
+    	armHolder = new Servo(9);
 
     	drive = new RobotDrive (lf, lr, rf, rr);
     	drive.setInvertedMotor(MotorType.kFrontLeft, false);
@@ -99,18 +103,23 @@ public class Robot extends IterativeRobot {
     /**
      * This function is called before entering autonomous
      */
-    double starttime;
+    double starttime, autoStateTime = 0;
     int autostate;
+    
     public void autonomousInit() {
     	System.out.println("Entering Autonomous: " +(starttime = Timer.getFPGATimestamp()));
     	driveEncoder.reset();
 		gyro.reset();
+		counter.reset();
 		autostate=0;
+		autoStateTime = starttime;
     }
 
     /**
      * This function is called periodically during autonomous
      */
+    
+    
     public void autonomousPeriodic() {
     	System.out.println("Distance: " + driveEncoder.getDistance());
     	System.out.println("Angle:    " + gyro.getAngle());
@@ -120,8 +129,9 @@ public class Robot extends IterativeRobot {
     //	} else {
     //		drive.stopMotor();
     //	}
-    	switch (dummy) {
-    	case 1:
+    	switch (autonomusMode) {
+    	
+    	case 1: // wait then move to score zone
     		switch (autostate) {
     		case 0:    		
     			System.out.println("Time is: " + (Timer.getFPGATimestamp()-starttime));
@@ -139,9 +149,58 @@ public class Robot extends IterativeRobot {
     		case 2:
     		default:
      			drive.stopMotor();
-   			
+     		break;
     		}
+    		
+    	case 2: // pickup something and move to score zone
+    		switch (autostate) {
+    		case 0: // close the arms   		
+    			gripMotor.set(-1);
+
+	    		if(counter.get() > 70) {
+	    			gripMotor.set(0);
+	    			autoStateTime = Timer.getFPGATimestamp();
+	    			autostate++;
+	    		}
+	    		else if (Timer.getFPGATimestamp()-starttime >= 10)
+	    			autostate = 2; // timeout
+    		break;
+    		
+    		case 1: // lift the something   		
+    			liftMotor.set(-1.0);
+    			
+    			if (Timer.getFPGATimestamp()-autoStateTime > 3) {
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+    				autostate++;
+    				
+    		break;
+    		
+    		case 2: // drive to score zone
+    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    				autostate++;
+    			if (Timer.getFPGATimestamp() - starttime > 14) 
+    				autostate++;
+    		break;
+    			
+    		case 3: // be done
+    		default:
+     			drive.stopMotor();
+     		break;
+    		}
+    		
+    		
+    		
     	}
+    	
+    	
+    	
+    	
+    	
     }
 
     /**
@@ -176,8 +235,8 @@ public class Robot extends IterativeRobot {
     	} else {
     		twistSpeed = 0.0;
     	}
-		twistSpeed *= 0.5;
-    	//comment = 0.25;
+		twistSpeed *= 0.45;
+    	//comment = 0.25; This is too slow
     	double angle = 0;
     	if(controller.getRawButton(7)) gyro.reset();
     	if(controller.getTrigger()) {
@@ -198,7 +257,7 @@ public class Robot extends IterativeRobot {
     	//She wasn't doing anything, so she typed in the code to pretend like she was doing stuff,
     	//So she wouldn't have to mess with the buttons.
     	//And it worked.
-    	//And then one day Matt saw her lovely stories.
+    	//And then one day Chandler saw her lovely stories.
     	//And he was like, "Taylor, what the heck did you do to the code?"
     	//And she laughed merrily.
     	//The end!
@@ -231,8 +290,16 @@ public class Robot extends IterativeRobot {
     	else
     		gripMotor.set(0);
 
+    	if(operator.getRawButton(10))
+    		armHolder.set(0);	// release the arm
+    	if(operator.getRawButton(11))
+    		armHolder.set(.5);
+    	
+    	
     	if(operator.getRawButton(3))
+    		//if(liftEncoder> 567) {
     		arm.set(.5);
+    	//	}
     	else if(operator.getRawButton(2))
     		arm.set(-.7);
     	else
@@ -251,7 +318,7 @@ public class Robot extends IterativeRobot {
     		oldRevLim = liftMotor.getReverseLimitOK();
     	}
     	
-    	System.out.println("gripPosition = " + gripPosition +" counts: " + counter.get());
+    	//System.out.println("gripPosition = " + gripPosition +" counts: " + counter.get());
 
     	if (!liftMotor.getForwardLimitOK()) { 
     		liftEncoder.reset();
