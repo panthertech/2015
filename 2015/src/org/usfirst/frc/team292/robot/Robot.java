@@ -3,7 +3,7 @@
 package org.usfirst.frc.team292.robot;
 
 import edu.wpi.first.wpilibj.CANJaguar;
-
+import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Counter;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Gyro;
@@ -34,7 +34,7 @@ public class Robot extends IterativeRobot {
 	Encoder driveEncoder;
 	Counter counter;
 	Servo armHolder;
-	int autonomusMode=2;
+	int autonomusMode=4;
 	
 	Dashboard dashboard;
 	boolean change = false;
@@ -54,12 +54,18 @@ public class Robot extends IterativeRobot {
     	liftMotor = new CANJaguar(2);
     	gripMotor = new CANJaguar(3);
     	armHolder = new Servo(9);
+    	
 
     	drive = new RobotDrive (lf, lr, rf, rr);
     	drive.setInvertedMotor(MotorType.kFrontLeft, false);
     	drive.setInvertedMotor(MotorType.kFrontRight, true);
     	drive.setInvertedMotor(MotorType.kRearLeft, false);
     	drive.setInvertedMotor(MotorType.kRearRight, true);
+    	
+    	CameraServer server;
+    	server=CameraServer.getInstance();
+    	server.setQuality(50);
+    	server.startAutomaticCapture("cam0");
     	
     	//cam = new Camera();
         //cam.setPriority(4);
@@ -152,7 +158,7 @@ public class Robot extends IterativeRobot {
      		break;
     		}
     		
-    	case 2: // pickup something and move to score zone
+    	case 2: // pickup recycle bin and move to score zone
     		switch (autostate) {
     		case 0: // close the arms   		
     			gripMotor.set(-1);
@@ -166,7 +172,7 @@ public class Robot extends IterativeRobot {
 	    			autostate = 2; // timeout
     		break;
     		
-    		case 1: // lift the something   		
+    		case 1: // lift the recycle bin   		
     			liftMotor.set(-1.0);
     			
     			if (Timer.getFPGATimestamp()-autoStateTime > 3) {
@@ -191,16 +197,128 @@ public class Robot extends IterativeRobot {
     		default:
      			drive.stopMotor();
      		break;
+     		
     		}
+    	case 3: // pickup tote and move to score zone
+    		switch (autostate) {
+    		case 0: // close the arms   		
+    			gripMotor.set(-1);
+
+	    		if(counter.get() > 70) {
+	    			gripMotor.set(0);
+	    			autoStateTime = Timer.getFPGATimestamp();
+	    			autostate++;
+	    		}
+	    		else if (Timer.getFPGATimestamp()-starttime >= 10)
+	    			autostate = 2; // timeout
+    		break;
     		
+    		case 1: // lift the tote   		
+    			liftMotor.set(-1.0);
+    			
+    			if (Timer.getFPGATimestamp()-autoStateTime > 3) {
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+    				autostate++;
+    				
+    		break;
     		
-    		
+    		case 2: // drive to score zone
+    			drive.mecanumDrive_Cartesian(.3, 0,0, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    				autostate++;
+    			if (Timer.getFPGATimestamp() - starttime > 14) 
+    				autostate++;
+    		break;
+    			
+    		case 3: // be done
+    		default:
+     			drive.stopMotor();
+     		break;
     	}
     	
-    	
-    	
-    	
-    	
+    	case 4: // pickup recycle bin and place on tote and move to score zone
+    		switch (autostate) {
+    		case 0: // close the arms   		
+    			gripMotor.set(-1);
+
+	    		if(counter.get() > 70) {
+	    			gripMotor.set(0);
+	    			autoStateTime = Timer.getFPGATimestamp();
+	    			autostate++;
+	    		}
+	    		else if (Timer.getFPGATimestamp()-starttime >= 10)
+	    			autostate = 2; // timeout
+    		break;
+    		
+    		case 1: // lift the recycle bin   		
+    			liftMotor.set(-1.0);
+    			
+    			if (Timer.getFPGATimestamp()-autoStateTime > 2.5) {
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+    				autostate++;
+    				
+    		break;
+    		
+    		case 2: //drive to the tote
+    			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
+    			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
+    				drive.stopMotor();
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+        				autostate++;
+    			
+    		break;
+    		
+    		case 3: // drop recycle bin  lower arms
+    			
+    			liftMotor.set(.6);
+    			
+    			if (Timer.getFPGATimestamp()-autoStateTime > 1.5) {
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			
+    			if (Timer.getFPGATimestamp()-starttime >= 10)
+        				autostate++;
+    			break;
+    			
+//    		case 2: // drive to score zone
+//    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
+//    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+//    				autostate++;
+//    			if (Timer.getFPGATimestamp() - starttime > 14) 
+//    				autostate++;
+//    		break;
+    			
+    		case 4: // Open the arms to drop recycle bin
+    			gripMotor.set(1);
+
+	    		if(!gripMotor.getForwardLimitOK()) {
+	    			gripMotor.set(0);
+	    			autoStateTime = Timer.getFPGATimestamp();
+	    			autostate++;
+	    		}
+	    		else if (Timer.getFPGATimestamp()-starttime >= 10)
+	    			autostate ++; // timeout
+    		break;
+    			
+    			
+    		default:
+     			drive.stopMotor();
+     		break;
+    		}
+    	}
     }
 
     /**
