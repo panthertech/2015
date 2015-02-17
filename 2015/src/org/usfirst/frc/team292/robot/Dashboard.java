@@ -70,4 +70,11 @@ public class Dashboard {
     public void setLiftEncoder(Encoder liftEncoder) {
     	this.liftEncoder = liftEncoder;
     }
+    
+    public int getAutoMode() {
+    	return (int)SmartDashboard.getNumber("Auto Mode", 0);
+    }
+    public int getDriveMode() {
+    	return (int)SmartDashboard.getNumber("Drive Mode", 0);
+    }
 }

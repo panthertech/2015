@@ -34,7 +34,7 @@ public class Robot extends IterativeRobot {
 	Encoder driveEncoder;
 	Counter counter;
 	Servo armHolder;
-	int autonomusMode=4;
+	int autonomousMode=4;
 	
 	Dashboard dashboard;
 	boolean change = false;
@@ -63,10 +63,10 @@ public class Robot extends IterativeRobot {
     	drive.setInvertedMotor(MotorType.kRearRight, true);
     	
     	CameraServer server;
-    	server=CameraServer.getInstance();
-    	server.setQuality(50);
-    	server.startAutomaticCapture("cam0");
-    	
+    	//server=CameraServer.getInstance();
+    	//server.setQuality(50);
+    	//server.startAutomaticCapture("cam0");
+    	//
     	//cam = new Camera();
         //cam.setPriority(4);
     	//cam.start();
@@ -119,6 +119,7 @@ public class Robot extends IterativeRobot {
 		counter.reset();
 		autostate=0;
 		autoStateTime = starttime;
+		autonomousMode = dashboard.getAutoMode();
     }
 
     /**
@@ -135,7 +136,7 @@ public class Robot extends IterativeRobot {
     //	} else {
     //		drive.stopMotor();
     //	}
-    	switch (autonomusMode) {
+    	switch (autonomousMode) {
     	
     	case 1: // wait then move to score zone
     		switch (autostate) {
@@ -269,7 +270,7 @@ public class Robot extends IterativeRobot {
     		
     		case 2: //drive to the tote
     			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > .8) {
     				drive.stopMotor();
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -293,24 +294,63 @@ public class Robot extends IterativeRobot {
         				autostate++;
     			break;
     			
-//    		case 2: // drive to score zone
-//    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
-//    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
-//    				autostate++;
-//    			if (Timer.getFPGATimestamp() - starttime > 14) 
-//    				autostate++;
-//    		break;
-    			
     		case 4: // Open the arms to drop recycle bin
     			gripMotor.set(1);
 
-	    		if(!gripMotor.getForwardLimitOK()) {
+	    		if(!gripMotor.getForwardLimitOK() || Timer.getFPGATimestamp()-autoStateTime > 2) {
 	    			gripMotor.set(0);
 	    			autoStateTime = Timer.getFPGATimestamp();
 	    			autostate++;
 	    		}
-	    		else if (Timer.getFPGATimestamp()-starttime >= 10)
+	    		else if (Timer.getFPGATimestamp()-starttime >= 13)
 	    			autostate ++; // timeout
+    		break;
+    		
+    		case 5: // lower arms to pickup tote and bin
+    			
+    			liftMotor.set(.6);
+    			
+    			if (!liftMotor.getReverseLimitOK()) {  // I don't know if this should be the reverse limit or the forward limit
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			
+    			if (Timer.getFPGATimestamp()-starttime >= 13)
+        				autostate++;
+    			break;
+    		
+    		case 6: // close arms on tote for pickup
+    			gripMotor.set(-1);
+
+	    		if(counter.get() > 70) {
+	    			gripMotor.set(0);
+	    			autoStateTime = Timer.getFPGATimestamp();
+	    			autostate++;
+	    		}
+	    		else if (Timer.getFPGATimestamp()-starttime >= 13)
+	    			autostate ++; // timeout
+    		break;
+    		
+    		case 7: // lift the tote bin combo   		
+    			liftMotor.set(-1.0);
+    			
+    			if (Timer.getFPGATimestamp()-autoStateTime > 2) {
+    				liftMotor.set(0);
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 13)
+    				autostate++;
+    				
+    		break;
+    		
+    		case 8: // drive to score zone
+//    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    				autostate++;
+    			if (Timer.getFPGATimestamp() - starttime > 14) 
+    				autostate++;
     		break;
     			
     			
@@ -355,12 +395,18 @@ public class Robot extends IterativeRobot {
     	}
 		twistSpeed *= 0.45;
     	//comment = 0.25; This is too slow
-    	double angle = 0;
     	if(controller.getRawButton(7)) gyro.reset();
-    	if(controller.getTrigger()) {
-    		angle = 0;
-    	} else {
-    		angle = gyro.getAngle();
+    	
+    	double angle = 0;
+    	switch(dashboard.getDriveMode()) {
+    	case 0:
+    		angle = controller.getTrigger() ? gyro.getAngle() : 0;
+    		break;
+    	case 1:
+    		angle = controller.getTrigger() ? 0 : gyro.getAngle();
+    		break;
+		default:
+			angle = 0;
     	}
     	drive.mecanumDrive_Cartesian(xSpeed, ySpeed, twistSpeed, angle);
     	
@@ -408,20 +454,19 @@ public class Robot extends IterativeRobot {
     	else
     		gripMotor.set(0);
 
-    	if(operator.getRawButton(10))
-    		armHolder.set(0);	// release the arm
-    	if(operator.getRawButton(11))
-    		armHolder.set(.5);
+    	if(operator.getRawButton(4) || operator.getRawButton(5))
+    		armHolder.set(0.5);	// release the arm
+    	else
+    		armHolder.set(0);
     	
     	
     	if(operator.getRawButton(3))
-    		//if(liftEncoder> 567) {
-    		arm.set(.5);
-    	//	}
+    		arm.set(-.5);
     	else if(operator.getRawButton(2))
-    		arm.set(-.7);
+    		arm.set(.7);
     	else
     		arm.set(0);
+    	
     		
     	if(oldLiftEncoder != liftEncoder.get()) {
     		System.out.println("Encoder counts: " + liftEncoder.get());
