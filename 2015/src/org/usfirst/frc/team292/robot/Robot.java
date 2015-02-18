@@ -5,10 +5,12 @@ package org.usfirst.frc.team292.robot;
 import edu.wpi.first.wpilibj.CANJaguar;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Counter;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.Talon;
@@ -34,10 +36,13 @@ public class Robot extends IterativeRobot {
 	Encoder driveEncoder;
 	Counter counter;
 	Servo armHolder;
+	DigitalInput robotID;
+	PowerDistributionPanel pdp;
 	int autonomousMode=4;
 	
 	Dashboard dashboard;
 	boolean change = false;
+	boolean armHeld = true;
 	
     /**
      * This function is run when the robot is first started up and should be
@@ -54,6 +59,8 @@ public class Robot extends IterativeRobot {
     	liftMotor = new CANJaguar(2);
     	gripMotor = new CANJaguar(3);
     	armHolder = new Servo(9);
+    	robotID = new DigitalInput(24);
+    	pdp = new PowerDistributionPanel();
     	
 
     	drive = new RobotDrive (lf, lr, rf, rr);
@@ -63,9 +70,9 @@ public class Robot extends IterativeRobot {
     	drive.setInvertedMotor(MotorType.kRearRight, true);
     	
     	CameraServer server;
-    	//server=CameraServer.getInstance();
-    	//server.setQuality(50);
-    	//server.startAutomaticCapture("cam0");
+    	server=CameraServer.getInstance();
+    	server.setQuality(50);
+    	server.startAutomaticCapture("cam0");
     	//
     	//cam = new Camera();
         //cam.setPriority(4);
@@ -83,6 +90,7 @@ public class Robot extends IterativeRobot {
     	dashboard.setGyro(gyro);
     	dashboard.setLiftMotor(liftMotor);
     	dashboard.setLiftEncoder(liftEncoder);
+    	dashboard.setPDP(pdp);
     	dashboard.start();
     	
     	System.out.println("Robot Initialization Complete: " + Timer.getFPGATimestamp());
@@ -137,6 +145,9 @@ public class Robot extends IterativeRobot {
     //		drive.stopMotor();
     //	}
     	switch (autonomousMode) {
+    	case 0: // do nothing
+    		drive.stopMotor();
+    		break;
     	
     	case 1: // wait then move to score zone
     		switch (autostate) {
@@ -381,9 +392,11 @@ public class Robot extends IterativeRobot {
     	
     	double xSpeed = controller.getX();
     	if(Math.abs(xSpeed) < 0.05) xSpeed = 0.0;
+    	xSpeed *= xSpeed * Math.signum(xSpeed);
     	
     	double ySpeed = controller.getY();
     	if(Math.abs(ySpeed) < 0.05) ySpeed = 0.0;
+    	ySpeed *= ySpeed * Math.signum(ySpeed);
     	
     	double twistSpeed = controller.getZ();
     	if(twistSpeed < -0.175) {
@@ -393,7 +406,8 @@ public class Robot extends IterativeRobot {
     	} else {
     		twistSpeed = 0.0;
     	}
-		twistSpeed *= 0.45;
+    	twistSpeed *= twistSpeed * Math.signum(twistSpeed) * 0.5;
+		//twistSpeed *= 0.45;
     	//comment = 0.25; This is too slow
     	if(controller.getRawButton(7)) gyro.reset();
     	
@@ -428,44 +442,53 @@ public class Robot extends IterativeRobot {
     	//applauds
     	//starts crying because it was so beautiful
 
-    	double opY = operator.getY();
-    	if(Math.abs(opY)>.5)
-    		liftMotor.set(-opY);
-    	else
-    		liftMotor.set(0);
-    	double opX = operator.getX();
-    	if(Math.abs(opX)>.5) {
-    		gripPosition=gripPosition-(int)Math.signum(opX)*counter.get();
-    		counter.reset();
-    		if(opX>0) 	// open
-    			if(gripMotor.getForwardLimitOK())
-    				gripMotor.set(opX);
-    			else {
-    				gripMotor.set(.2); // hold the arm open with a small force
-    				counter.reset();
-    				gripPosition=0;
-    			}	
-    		else		// close
-    			if(gripPosition<80)
-    				gripMotor.set(opX);
-    			else
-    				gripMotor.set(0);
-    	}
-    	else
-    		gripMotor.set(0);
+		double opY = operator.getY();
+		if (Math.abs(opY) > .05)
+			liftMotor.set(-opY);
+		else
+			liftMotor.set(0);
+		
+		double opX = operator.getX();
+		if (Math.abs(opX) > .05) {
+			gripPosition = gripPosition - (int) Math.signum(opX) * counter.get();
+			counter.reset();
+			if (opX > 0) // open
+				if (gripMotor.getForwardLimitOK())
+					gripMotor.set(opX);
+				else {
+					gripMotor.set(.2); // hold the arm open with a small force
+					counter.reset();
+					gripPosition = 0;
+				}
+			else // close
+			if (gripPosition < 80)
+				gripMotor.set(opX);
+			else
+				gripMotor.set(0);
+		} else
+			gripMotor.set(0);
 
-    	if(operator.getRawButton(4) || operator.getRawButton(5))
-    		armHolder.set(0.5);	// release the arm
-    	else
-    		armHolder.set(0);
+    	if(operator.getRawButton(4)) armHeld = false;
+    	else if(operator.getRawButton(5)) armHeld = true;
+		
+    	if(armHeld) armHolder.set(0); // hold the arm
+    	else armHolder.set(0.5); // release the arm
     	
-    	
-    	if(operator.getRawButton(3))
-    		arm.set(-.5);
-    	else if(operator.getRawButton(2))
-    		arm.set(.7);
-    	else
-    		arm.set(0);
+    	if(operator.getRawButton(3) && !armHeld) {// arm out - only if not being held
+    		if(isCompetitionBot()) {
+    			arm.set(0.7);
+    		} else {
+        		arm.set(-0.7);
+    		}
+    	}
+    	else if(operator.getRawButton(2)) {// arm in
+    		if(isCompetitionBot()) {
+    			arm.set(-0.8);
+    		} else {
+        		arm.set(0.8);
+    		}
+    	}
+    	else arm.set(0);
     	
     		
     	if(oldLiftEncoder != liftEncoder.get()) {
@@ -488,9 +511,6 @@ public class Robot extends IterativeRobot {
     		//Matt, it is being mean and not working!!!!!
     	}
     }
-    {
-    	
-    }
     
     /**
      * This function is called before entering test mode
@@ -506,5 +526,12 @@ public class Robot extends IterativeRobot {
     
     }
     
+    /**
+     * This function reads the digital input corresponding to the
+     * jumper only located on the competition bot
+     */
+    public boolean isCompetitionBot() {
+    	return !robotID.get();
+    }
 }
 //All of these random comments were brought to you by ~ Taylor!

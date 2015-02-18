@@ -3,6 +3,7 @@ package org.usfirst.frc.team292.robot;
 import edu.wpi.first.wpilibj.CANJaguar;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Gyro;
+import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Dashboard {
@@ -13,6 +14,7 @@ public class Dashboard {
     private Gyro gyro;
     private CANJaguar lift;
     private Encoder liftEncoder;
+    private PowerDistributionPanel pdp;
 
     private class DashboardThread extends Thread {
 
@@ -25,10 +27,12 @@ public class Dashboard {
         public void run() {
             while (run) {
                 if (db.enabled()) {
-                	SmartDashboard.putNumber("Gyro", gyro.getAngle());
-                	SmartDashboard.putNumber("Lift", liftEncoder.get());
-                	SmartDashboard.putBoolean("Lift At Bottom", !lift.getForwardLimitOK());
-                	SmartDashboard.putBoolean("Lift At Top", !lift.getReverseLimitOK());
+                	if(gyro != null) SmartDashboard.putNumber("Gyro", gyro.getAngle());
+                	if(liftEncoder != null) SmartDashboard.putNumber("Lift", liftEncoder.get());
+                	if(lift != null) SmartDashboard.putBoolean("Lift At Bottom", !lift.getForwardLimitOK());
+                	if(lift != null) SmartDashboard.putBoolean("Lift At Top", !lift.getReverseLimitOK());
+                	if(pdp != null) pdp.updateTable();
+                	if(pdp != null) SmartDashboard.putData("PDP", pdp);
                 }
                 try {
                     Thread.sleep(250);
@@ -42,7 +46,7 @@ public class Dashboard {
     public Dashboard() {
         enabled = false;
         task = new DashboardThread(this);
-        task.setPriority(4);
+        task.setPriority(Thread.MIN_PRIORITY);
         task.start();
     }
 
@@ -69,6 +73,10 @@ public class Dashboard {
     
     public void setLiftEncoder(Encoder liftEncoder) {
     	this.liftEncoder = liftEncoder;
+    }
+    
+    public void setPDP(PowerDistributionPanel pdp) {
+    	this.pdp = pdp;
     }
     
     public int getAutoMode() {
