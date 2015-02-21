@@ -1,9 +1,9 @@
 package org.usfirst.frc.team292.robot;
 
-import edu.wpi.first.wpilibj.CANJaguar;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
+import edu.wpi.first.wpilibj.CANTalon;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Dashboard {
@@ -12,7 +12,7 @@ public class Dashboard {
     private Thread task;
     private boolean run = true;
     private Gyro gyro;
-    private CANJaguar lift;
+    private CANTalon lift;
     private Encoder liftEncoder;
     private PowerDistributionPanel pdp;
 
@@ -29,10 +29,10 @@ public class Dashboard {
                 if (db.enabled()) {
                 	if(gyro != null) SmartDashboard.putNumber("Gyro", gyro.getAngle());
                 	if(liftEncoder != null) SmartDashboard.putNumber("Lift", liftEncoder.get());
-                	if(lift != null) SmartDashboard.putBoolean("Lift At Bottom", !lift.getForwardLimitOK());
-                	if(lift != null) SmartDashboard.putBoolean("Lift At Top", !lift.getReverseLimitOK());
-                	if(pdp != null) pdp.updateTable();
-                	if(pdp != null) SmartDashboard.putData("PDP", pdp);
+                	if(lift != null) SmartDashboard.putBoolean("Lift At Bottom", !lift.isFwdLimitSwitchClosed());
+                	if(lift != null) SmartDashboard.putBoolean("Lift At Top", !lift.isRevLimitSwitchClosed());
+                	//if(pdp != null) pdp.updateTable();
+                	//if(pdp != null) SmartDashboard.putData("PDP", pdp);
                 }
                 try {
                     Thread.sleep(250);
@@ -67,7 +67,7 @@ public class Dashboard {
     	this.gyro = gyro;
     }
     
-    public void setLiftMotor(CANJaguar lift) {
+    public void setLiftMotor(CANTalon lift) {
     	this.lift = lift;
     }
     

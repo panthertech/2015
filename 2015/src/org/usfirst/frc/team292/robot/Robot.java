@@ -2,7 +2,7 @@
 //Comments are fun!
 package org.usfirst.frc.team292.robot;
 
-import edu.wpi.first.wpilibj.CANJaguar;
+import edu.wpi.first.wpilibj.CANTalon;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Counter;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -28,7 +28,7 @@ public class Robot extends IterativeRobot {
 	Joystick controller;
 	Joystick operator;
 	Talon lf,rf,lr,rr,arm;
-	CANJaguar liftMotor,gripMotor;
+	CANTalon liftMotor,gripMotor;
 	RobotDrive drive;
 	Camera cam;
 	Gyro gyro;
@@ -56,8 +56,8 @@ public class Robot extends IterativeRobot {
     	lr = new Talon (1);
     	rr = new Talon (3);
     	arm = new Talon (6);
-    	liftMotor = new CANJaguar(2);
-    	gripMotor = new CANJaguar(3);
+    	liftMotor = new CANTalon(2);
+    	gripMotor = new CANTalon(3);
     	armHolder = new Servo(9);
     	robotID = new DigitalInput(24);
     	pdp = new PowerDistributionPanel();
@@ -72,7 +72,11 @@ public class Robot extends IterativeRobot {
     	CameraServer server;
     	server=CameraServer.getInstance();
     	server.setQuality(50);
-    	server.startAutomaticCapture("cam0");
+    	if(isCompetitionBot()) {
+    		server.startAutomaticCapture("cam0");
+    	} else {
+    		server.startAutomaticCapture("cam2");
+    	}
     	//
     	//cam = new Camera();
         //cam.setPriority(4);
@@ -308,7 +312,7 @@ public class Robot extends IterativeRobot {
     		case 4: // Open the arms to drop recycle bin
     			gripMotor.set(1);
 
-	    		if(!gripMotor.getForwardLimitOK() || Timer.getFPGATimestamp()-autoStateTime > 2) {
+	    		if(!gripMotor.isFwdLimitSwitchClosed() || Timer.getFPGATimestamp()-autoStateTime > 2) {
 	    			gripMotor.set(0);
 	    			autoStateTime = Timer.getFPGATimestamp();
 	    			autostate++;
@@ -321,7 +325,7 @@ public class Robot extends IterativeRobot {
     			
     			liftMotor.set(.6);
     			
-    			if (!liftMotor.getReverseLimitOK()) {  // I don't know if this should be the reverse limit or the forward limit
+    			if (!liftMotor.isRevLimitSwitchClosed()) {  // I don't know if this should be the reverse limit or the forward limit
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -453,7 +457,7 @@ public class Robot extends IterativeRobot {
 			gripPosition = gripPosition - (int) Math.signum(opX) * counter.get();
 			counter.reset();
 			if (opX > 0) // open
-				if (gripMotor.getForwardLimitOK())
+				if (gripMotor.isFwdLimitSwitchClosed())
 					gripMotor.set(opX);
 				else {
 					gripMotor.set(.2); // hold the arm open with a small force
@@ -495,18 +499,18 @@ public class Robot extends IterativeRobot {
     		System.out.println("Encoder counts: " + liftEncoder.get());
     		oldLiftEncoder = liftEncoder.get();
     	}
-    	if(oldFwdLim != liftMotor.getForwardLimitOK()) {
-    		System.out.println("JaguarForwardLimit:" + liftMotor.getForwardLimitOK()); 
-    		oldFwdLim = liftMotor.getForwardLimitOK();
+    	if(oldFwdLim != liftMotor.isFwdLimitSwitchClosed()) {
+    		System.out.println("JaguarForwardLimit:" + liftMotor.isFwdLimitSwitchClosed()); 
+    		oldFwdLim = liftMotor.isFwdLimitSwitchClosed();
     	}
-    	if(oldRevLim != liftMotor.getReverseLimitOK()) {
-    		System.out.println("JaguarBackwardLimit:" + liftMotor.getReverseLimitOK());
-    		oldRevLim = liftMotor.getReverseLimitOK();
+    	if(oldRevLim != liftMotor.isRevLimitSwitchClosed()) {
+    		System.out.println("JaguarBackwardLimit:" + liftMotor.isRevLimitSwitchClosed());
+    		oldRevLim = liftMotor.isRevLimitSwitchClosed();
     	}
     	
     	//System.out.println("gripPosition = " + gripPosition +" counts: " + counter.get());
 
-    	if (!liftMotor.getForwardLimitOK()) { 
+    	if (!liftMotor.isFwdLimitSwitchClosed()) { 
     		liftEncoder.reset();
     		//Matt, it is being mean and not working!!!!!
     	}
