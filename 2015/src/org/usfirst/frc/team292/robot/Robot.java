@@ -38,7 +38,7 @@ public class Robot extends IterativeRobot {
 	Servo armHolder;
 	DigitalInput robotID;
 	PowerDistributionPanel pdp;
-	int autonomousMode=4;
+	int autonomousMode;
 	
 	Dashboard dashboard;
 	boolean change = false;
@@ -70,17 +70,15 @@ public class Robot extends IterativeRobot {
     	drive.setInvertedMotor(MotorType.kRearRight, true);
     	
     	CameraServer server;
-    	server=CameraServer.getInstance();
+    	server = CameraServer.getInstance();
     	server.setQuality(50);
     	if(isCompetitionBot()) {
-    		server.startAutomaticCapture("cam0");
+    		cam = new Camera("cam0", "cam1");
     	} else {
-    		server.startAutomaticCapture("cam2");
+    		cam = new Camera("cam1", "cam2");
     	}
-    	//
-    	//cam = new Camera();
-        //cam.setPriority(4);
-    	//cam.start();
+        cam.setPriority(4);
+    	cam.start();
     	
     	gyro = new Gyro(0);
     	
@@ -132,6 +130,7 @@ public class Robot extends IterativeRobot {
 		autostate=0;
 		autoStateTime = starttime;
 		autonomousMode = dashboard.getAutoMode();
+		System.out.println("Autonomous Mode: " + autonomousMode);
     }
 
     /**
@@ -139,9 +138,9 @@ public class Robot extends IterativeRobot {
      */
     
     
-    public void autonomousPeriodic() {
-    	System.out.println("Distance: " + driveEncoder.getDistance());
-    	System.out.println("Angle:    " + gyro.getAngle());
+	public void autonomousPeriodic() {
+    	//System.out.println("Distance: " + driveEncoder.getDistance());
+    	//System.out.println("Angle:    " + gyro.getAngle());
     //	if(driveEncoder.getDistance() < 6.0)
     //	{
     //		drive.mecanumDrive_Cartesian(0, -0.2, -gyro.getAngle()/12, gyro.getAngle());
@@ -162,7 +161,7 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 1:    		
-    			if (Timer.getFPGATimestamp()-starttime >= 10)
+    			if (Timer.getFPGATimestamp()-starttime >= 8)
     				autostate++;
     				
     			drive.mecanumDrive_Cartesian(0, -.292,0, gyro.getAngle());
@@ -173,7 +172,7 @@ public class Robot extends IterativeRobot {
      			drive.stopMotor();
      		break;
     		}
-    		
+    		break;
     	case 2: // pickup recycle bin and move to score zone
     		switch (autostate) {
     		case 0: // close the arms   		
@@ -202,8 +201,8 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    			drive.mecanumDrive_Cartesian(-.5, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
     				autostate++;
@@ -215,6 +214,7 @@ public class Robot extends IterativeRobot {
      		break;
      		
     		}
+    		break;
     	case 3: // pickup tote and move to score zone
     		switch (autostate) {
     		case 0: // close the arms   		
@@ -229,10 +229,10 @@ public class Robot extends IterativeRobot {
 	    			autostate = 2; // timeout
     		break;
     		
-    		case 1: // lift the tote   		
+    		case 1: // lift the tote 		
     			liftMotor.set(-1.0);
     			
-    			if (Timer.getFPGATimestamp()-autoStateTime > 3) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > 2) {
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -243,8 +243,8 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(.3, 0,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    			drive.mecanumDrive_Cartesian(.5, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
     				autostate++;
@@ -254,8 +254,9 @@ public class Robot extends IterativeRobot {
     		default:
      			drive.stopMotor();
      		break;
-    	}
-    	
+     		
+    		}
+    		break;
     	case 4: // pickup recycle bin and place on tote and move to score zone
     		switch (autostate) {
     		case 0: // close the arms   		
@@ -273,7 +274,7 @@ public class Robot extends IterativeRobot {
     		case 1: // lift the recycle bin   		
     			liftMotor.set(-1.0);
     			
-    			if (Timer.getFPGATimestamp()-autoStateTime > 2.5) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > 3) {
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -297,9 +298,9 @@ public class Robot extends IterativeRobot {
     		
     		case 3: // drop recycle bin  lower arms
     			
-    			liftMotor.set(.6);
+    			liftMotor.set(1);
     			
-    			if (Timer.getFPGATimestamp()-autoStateTime > 1.5) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -312,8 +313,9 @@ public class Robot extends IterativeRobot {
     		case 4: // Open the arms to drop recycle bin
     			gripMotor.set(1);
 
-	    		if(!gripMotor.isFwdLimitSwitchClosed() || Timer.getFPGATimestamp()-autoStateTime > 2) {
+	    		if(!gripMotor.isFwdLimitSwitchClosed() || Timer.getFPGATimestamp()-autoStateTime > 1) {
 	    			gripMotor.set(0);
+	    			counter.reset();
 	    			autoStateTime = Timer.getFPGATimestamp();
 	    			autostate++;
 	    		}
@@ -323,9 +325,9 @@ public class Robot extends IterativeRobot {
     		
     		case 5: // lower arms to pickup tote and bin
     			
-    			liftMotor.set(.6);
+    			liftMotor.set(1);
     			
-    			if (!liftMotor.isRevLimitSwitchClosed()) {  // I don't know if this should be the reverse limit or the forward limit
+    			if (!liftMotor.isFwdLimitSwitchClosed()) {  // I don't know if this should be the reverse limit or the forward limit
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -334,8 +336,21 @@ public class Robot extends IterativeRobot {
     			if (Timer.getFPGATimestamp()-starttime >= 13)
         				autostate++;
     			break;
+
+        		
+    		case 6: //drive to the tote
+    			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
+    			if (Timer.getFPGATimestamp()-autoStateTime > .3) {
+    				drive.stopMotor();
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+    			}
+    			if (Timer.getFPGATimestamp()-starttime >= 13)
+        				autostate++;
+    			
+    		break;
     		
-    		case 6: // close arms on tote for pickup
+    		case 7: // close arms on tote for pickup
     			gripMotor.set(-1);
 
 	    		if(counter.get() > 70) {
@@ -347,7 +362,7 @@ public class Robot extends IterativeRobot {
 	    			autostate ++; // timeout
     		break;
     		
-    		case 7: // lift the tote bin combo   		
+    		case 8: // lift the tote bin combo   		
     			liftMotor.set(-1.0);
     			
     			if (Timer.getFPGATimestamp()-autoStateTime > 2) {
@@ -360,11 +375,11 @@ public class Robot extends IterativeRobot {
     				
     		break;
     		
-    		case 8: // drive to score zone
-//    			drive.mecanumDrive_Cartesian(-.3, 0,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 3) 
+    		case 9: // drive to score zone
+    			drive.mecanumDrive_Cartesian(-.3, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 8) 
     				autostate++;
-    			if (Timer.getFPGATimestamp() - starttime > 14) 
+    			if (Timer.getFPGATimestamp() - starttime > 15) 
     				autostate++;
     		break;
     			
@@ -477,6 +492,9 @@ public class Robot extends IterativeRobot {
 		
     	if(armHeld) armHolder.set(0); // hold the arm
     	else armHolder.set(0.5); // release the arm
+
+    	if(armHeld) cam.viewBottomCamera();
+    	else cam.viewTopCamera();
     	
     	if(operator.getRawButton(3) && !armHeld) {// arm out - only if not being held
     		if(isCompetitionBot()) {
