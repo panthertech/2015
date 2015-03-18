@@ -18,7 +18,11 @@ public class Camera extends java.lang.Thread {
 		server.setQuality(50);
 		
 		topCam = new USBCamera(topCameraName);
-		bottomCam = new USBCamera(bottomCameraName);
+		if(topCameraName.equals(bottomCameraName)) {
+			bottomCam = topCam;
+		} else {
+			bottomCam = new USBCamera(bottomCameraName);
+		}
 	}
 	
  	public void run() {

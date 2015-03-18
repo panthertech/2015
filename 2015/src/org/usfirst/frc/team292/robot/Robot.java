@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
+import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Servo;
@@ -38,6 +39,7 @@ public class Robot extends IterativeRobot {
 	Servo armHolder;
 	DigitalInput robotID;
 	PowerDistributionPanel pdp;
+	Lights lights;
 	int autonomousMode;
 	
 	Dashboard dashboard;
@@ -62,6 +64,7 @@ public class Robot extends IterativeRobot {
     	robotID = new DigitalInput(24);
     	pdp = new PowerDistributionPanel();
     	
+    	lights = new Lights(2,0,3,1);
 
     	drive = new RobotDrive (lf, lr, rf, rr);
     	drive.setInvertedMotor(MotorType.kFrontLeft, false);
@@ -73,7 +76,7 @@ public class Robot extends IterativeRobot {
     	server = CameraServer.getInstance();
     	server.setQuality(50);
     	if(isCompetitionBot()) {
-    		cam = new Camera("cam0", "cam1");
+    		cam = new Camera("cam0", "cam0");
     	} else {
     		cam = new Camera("cam1", "cam2");
     	}
@@ -201,8 +204,8 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(-.5, 0,-gyro.getAngle()/12, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
+    			drive.mecanumDrive_Cartesian(-.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 4.0) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
     				autostate++;
@@ -212,6 +215,7 @@ public class Robot extends IterativeRobot {
     		default:
      			drive.stopMotor();
      		break;
+     		
      		
     		}
     		break;
@@ -243,8 +247,8 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(.5, 0,-gyro.getAngle()/12, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
+    			drive.mecanumDrive_Cartesian(.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 4.0) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
     				autostate++;
@@ -262,7 +266,7 @@ public class Robot extends IterativeRobot {
     		case 0: // close the arms   		
     			gripMotor.set(-1);
 
-	    		if(counter.get() > 70) {
+	    		if(counter.get() > 50) {
 	    			gripMotor.set(0);
 	    			autoStateTime = Timer.getFPGATimestamp();
 	    			autostate++;
@@ -286,7 +290,7 @@ public class Robot extends IterativeRobot {
     		
     		case 2: //drive to the tote
     			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp()-autoStateTime > .8) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
     				drive.stopMotor();
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -340,7 +344,7 @@ public class Robot extends IterativeRobot {
         		
     		case 6: //drive to the tote
     			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
-    			if (Timer.getFPGATimestamp()-autoStateTime > .3) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > .4) {
     				drive.stopMotor();
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -365,7 +369,7 @@ public class Robot extends IterativeRobot {
     		case 8: // lift the tote bin combo   		
     			liftMotor.set(-1.0);
     			
-    			if (Timer.getFPGATimestamp()-autoStateTime > 2) {
+    			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
     				liftMotor.set(0);
     				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
@@ -376,8 +380,8 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 9: // drive to score zone
-    			drive.mecanumDrive_Cartesian(-.3, 0,-gyro.getAngle()/12, gyro.getAngle());
-    			if (Timer.getFPGATimestamp() - autoStateTime > 8) 
+    			drive.mecanumDrive_Cartesian(-.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 15) 
     				autostate++;
@@ -389,6 +393,8 @@ public class Robot extends IterativeRobot {
      		break;
     		}
     	}
+    	
+    	lights.periodic();
     }
 
     /**
@@ -406,9 +412,9 @@ public class Robot extends IterativeRobot {
      */
 	boolean oldFwdLim = false;
 	boolean oldRevLim = false;
-	int oldLiftEncoder = 0; 
+	int oldLiftEncoder = 0;
 	public void teleopPeriodic() {
-    	
+		
     	double xSpeed = controller.getX();
     	if(Math.abs(xSpeed) < 0.05) xSpeed = 0.0;
     	xSpeed *= xSpeed * Math.signum(xSpeed);
@@ -425,7 +431,7 @@ public class Robot extends IterativeRobot {
     	} else {
     		twistSpeed = 0.0;
     	}
-    	twistSpeed *= twistSpeed * Math.signum(twistSpeed) * 0.5;
+    	twistSpeed *= twistSpeed * Math.signum(twistSpeed) * 0.8;
 		//twistSpeed *= 0.45;
     	//comment = 0.25; This is too slow
     	if(controller.getRawButton(7)) gyro.reset();
@@ -493,8 +499,8 @@ public class Robot extends IterativeRobot {
     	if(armHeld) armHolder.set(0); // hold the arm
     	else armHolder.set(0.5); // release the arm
 
-    	if(armHeld) cam.viewBottomCamera();
-    	else cam.viewTopCamera();
+    	if(operator.getRawButton(7)) cam.viewBottomCamera();
+    	else if (operator.getRawButton(6)) cam.viewTopCamera();
     	
     	if(operator.getRawButton(3) && !armHeld) {// arm out - only if not being held
     		if(isCompetitionBot()) {
@@ -530,8 +536,11 @@ public class Robot extends IterativeRobot {
 
     	if (!liftMotor.isFwdLimitSwitchClosed()) { 
     		liftEncoder.reset();
-    		//Matt, it is being mean and not working!!!!!
     	}
+    	
+    	if(operator.getRawButton(10)) lights.setCoopertition(false);
+    	if(operator.getRawButton(11)) lights.setCoopertition(true);
+    	lights.periodic();
     }
     
     /**
@@ -557,3 +566,33 @@ public class Robot extends IterativeRobot {
     }
 }
 //All of these random comments were brought to you by ~ Taylor!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//                                                     I BROKE THE CODE!!!
+
+
+
+
+
+
+
+
+
+
+
+
