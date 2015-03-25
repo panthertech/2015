@@ -13,10 +13,11 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
-import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.SerialPort;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Servo;
+import com.kauailabs.navx_mxp.AHRS;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -45,6 +46,9 @@ public class Robot extends IterativeRobot {
 	Dashboard dashboard;
 	boolean change = false;
 	boolean armHeld = true;
+
+	SerialPort serial_port;
+	AHRS navx; // This class can only be used w/the navX MXP.
 	
     /**
      * This function is run when the robot is first started up and should be
@@ -91,13 +95,28 @@ public class Robot extends IterativeRobot {
     	
     	counter = new Counter(8);
     	
+		try {
+			serial_port = new SerialPort(57600, SerialPort.Port.kMXP);
+			byte update_rate_hz = 50;
+			navx = new AHRS(serial_port, update_rate_hz);
+		} catch (Exception ex) {
+			System.out.println("Error initializing NavX: " + ex.toString());
+		}
+    	
     	dashboard = new Dashboard();
     	dashboard.setGyro(gyro);
     	dashboard.setLiftMotor(liftMotor);
     	dashboard.setLiftEncoder(liftEncoder);
     	dashboard.setPDP(pdp);
+    	dashboard.setNavX(navx);
     	dashboard.start();
     	
+		while (navx.isCalibrating()) {
+			// "wait until calibration is done" ~Matt
+			// "Okay, and then after that. Hey stop that."
+		}
+		navx.zeroYaw();
+
     	System.out.println("Robot Initialization Complete: " + Timer.getFPGATimestamp());
     }
 
@@ -112,11 +131,7 @@ public class Robot extends IterativeRobot {
      * This function is called periodically during disabled
      */
     public void disabledPeriodic() {
-    	//System.out.println("Counts: " + counter.get());
-    	//System.out.println("Drive Encoder counts: " + driveEncoder.get());
-    	//System.out.println("Lift  Encoder counts: " + liftEncoder.get());
-    	//System.out.println("Jag bus voltage: " + liftMotor.getBusVoltage());
-    	//System.out.println("Gyro angle: " + gyro.getAngle());
+    	
     }
 
     /**
@@ -129,6 +144,7 @@ public class Robot extends IterativeRobot {
     	System.out.println("Entering Autonomous: " +(starttime = Timer.getFPGATimestamp()));
     	driveEncoder.reset();
 		gyro.reset();
+		navx.zeroYaw();
 		counter.reset();
 		autostate=0;
 		autoStateTime = starttime;
@@ -143,10 +159,10 @@ public class Robot extends IterativeRobot {
     
 	public void autonomousPeriodic() {
     	//System.out.println("Distance: " + driveEncoder.getDistance());
-    	//System.out.println("Angle:    " + gyro.getAngle());
+    	//System.out.println("Angle:    " + getAngle());
     //	if(driveEncoder.getDistance() < 6.0)
     //	{
-    //		drive.mecanumDrive_Cartesian(0, -0.2, -gyro.getAngle()/12, gyro.getAngle());
+    //		drive.mecanumDrive_Cartesian(0, -0.2, -getAngle()/12, getAngle());
     //	} else {
     //		drive.stopMotor();
     //	}
@@ -159,15 +175,19 @@ public class Robot extends IterativeRobot {
     		switch (autostate) {
     		case 0:    		
     			System.out.println("Time is: " + (Timer.getFPGATimestamp()-starttime));
-	    		if (Timer.getFPGATimestamp()-starttime >= 5)
-	    			autostate++;
+	    		if (Timer.getFPGATimestamp()-starttime >= 0.5) {
+    				autoStateTime = Timer.getFPGATimestamp();
+    				autostate++;
+	    		}
     		break;
     		
     		case 1:    		
-    			if (Timer.getFPGATimestamp()-starttime >= 8)
+    			if (Timer.getFPGATimestamp()-autoStateTime >= 2) {
+    				autoStateTime = Timer.getFPGATimestamp();
     				autostate++;
+    			}
     				
-    			drive.mecanumDrive_Cartesian(0, -.292,0, gyro.getAngle());
+    			drive.mecanumDrive_Cartesian(0, 0.4, 0, 0);
     		break;
     		
     		case 2:
@@ -203,8 +223,8 @@ public class Robot extends IterativeRobot {
     				
     		break;
     		
-    		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(-.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    		case 2: // drive to score zone BACKWARDS
+    			drive.mecanumDrive_Cartesian(-.6, 0,-getAngle()/12, getAngle());
     			if (Timer.getFPGATimestamp() - autoStateTime > 4.0) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
@@ -247,7 +267,7 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: // drive to score zone
-    			drive.mecanumDrive_Cartesian(.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			drive.mecanumDrive_Cartesian(.6, 0,-getAngle()/12, getAngle());
     			if (Timer.getFPGATimestamp() - autoStateTime > 4.0) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 14) 
@@ -289,7 +309,7 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 2: //drive to the tote
-    			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
+    			drive.mecanumDrive_Cartesian(0, -.3 ,0, getAngle());
     			if (Timer.getFPGATimestamp()-autoStateTime > 1) {
     				drive.stopMotor();
     				autoStateTime = Timer.getFPGATimestamp();
@@ -343,7 +363,7 @@ public class Robot extends IterativeRobot {
 
         		
     		case 6: //drive to the tote
-    			drive.mecanumDrive_Cartesian(0, -.3 ,0, gyro.getAngle());
+    			drive.mecanumDrive_Cartesian(0, -.3 ,0, getAngle());
     			if (Timer.getFPGATimestamp()-autoStateTime > .4) {
     				drive.stopMotor();
     				autoStateTime = Timer.getFPGATimestamp();
@@ -380,7 +400,7 @@ public class Robot extends IterativeRobot {
     		break;
     		
     		case 9: // drive to score zone
-    			drive.mecanumDrive_Cartesian(-.6, 0,-gyro.getAngle()/12, gyro.getAngle());
+    			drive.mecanumDrive_Cartesian(-.6, 0,-getAngle()/12, getAngle());
     			if (Timer.getFPGATimestamp() - autoStateTime > 6) 
     				autostate++;
     			if (Timer.getFPGATimestamp() - starttime > 15) 
@@ -434,15 +454,15 @@ public class Robot extends IterativeRobot {
     	twistSpeed *= twistSpeed * Math.signum(twistSpeed) * 0.8;
 		//twistSpeed *= 0.45;
     	//comment = 0.25; This is too slow
-    	if(controller.getRawButton(7)) gyro.reset();
+    	if(controller.getRawButton(7)) navx.zeroYaw();
     	
     	double angle = 0;
     	switch(dashboard.getDriveMode()) {
     	case 0:
-    		angle = controller.getTrigger() ? gyro.getAngle() : 0;
+    		angle = controller.getTrigger() ? getAngle() : 0;
     		break;
     	case 1:
-    		angle = controller.getTrigger() ? 0 : gyro.getAngle();
+    		angle = controller.getTrigger() ? 0 : getAngle();
     		break;
 		default:
 			angle = 0;
@@ -563,6 +583,17 @@ public class Robot extends IterativeRobot {
      */
     public boolean isCompetitionBot() {
     	return !robotID.get();
+    }
+    
+    /**
+     * This function returns the current angle of the robot as determined by the NavX
+     */
+    public double getAngle() {
+    	if(navx.isConnected()) {
+    		return navx.getYaw();
+    	} else {
+    		return 0.0;
+    	}
     }
 }
 //All of these random comments were brought to you by ~ Taylor!
